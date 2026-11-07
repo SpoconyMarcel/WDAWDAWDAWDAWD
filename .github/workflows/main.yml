@@ -1,28 +1,54 @@
-name: Build Minecraft JAR
+name: Build mod
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Pobierz kod
+        uses: actions/checkout@v4
 
-    - name: Set up JDK 21
-      uses: actions/setup-java@v4
-      with:
-        java-version: '21'
-        distribution: 'temurin'
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
 
-    - name: Build with Maven
-      run: mvn clean package
+      - name: Gradle 8.12
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.12
 
-    - name: Upload JAR Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: plugin-jar
-        path: target/*.jar
+      - name: Buduj moda
+        run: gradle build --no-daemon
+
+      - name: Przygotuj plik
+        run: |
+          mkdir out
+          for f in build/libs/*.jar; do
+            case "$f" in
+              *-sources.jar) ;;
+              *) cp "$f" out/FakeServer-mod.jar ;;
+            esac
+          done
+          ls -la out
+
+      - name: Artefakt
+        uses: actions/upload-artifact@v4
+        with:
+          name: FakeServer-mod
+          path: out/FakeServer-mod.jar
+
+      - name: Release latest
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: FakeServer - najnowszy build
+          files: out/FakeServer-mod.jar
